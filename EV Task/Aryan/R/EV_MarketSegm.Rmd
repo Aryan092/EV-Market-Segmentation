@@ -1,0 +1,155 @@
+---
+title: "EV project - Feynn"
+author: "Aryan"
+date: '2024-02-14'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+## EV Market Segmenatation - R
+
+
+```{r load data}
+data1 <- read.csv('EV_fil.csv')
+```
+
+```{r}
+data2 <- subset(data1, select = -rating)
+```
+
+
+## PCA
+
+You can also embed plots, for example:
+
+```{r PCA}
+EV.pca <- prcomp(data2)
+summary(EV.pca)
+```
+
+```{r}
+print(EV.pca, digits = 1)
+```
+
+```{r}
+library("flexclust") 
+plot(predict(EV.pca), col = "grey") 
+projAxes(EV.pca)
+```
+
+The attribute Visual Appeal plays a key role in the evaluation of two-wheelers in India. The remaining attributes align with what can be interpreted as positive perceptions: as all attricbutes point in the same direction in the perceptual chart.
+
+These initial exploratory insights represent valuable information for segment extraction. Results indicate that all attributes are strongly related to one another, and that the Visual appeal dimension may be critical in differentiating between groups of consumers.
+
+# Extracting Segments
+
+```{r}
+set.seed(1234) 
+
+EV.km28 <- stepFlexclust(data2, 2:8, nrep = 10, verbose = FALSE) 
+EV.km28 <- relabel(EV.km28)
+```
+
+```{r}
+plot(EV.km28, xlab = "number of segments")
+```
+
+
+
+```{r}
+set.seed(1234) 
+EV.b28 <- bootFlexclust(data2, 2:8, nrep = 10, nboot = 100)
+```
+
+
+```{r}
+plot(EV.b28, xlab = "number of segments", ylab = "adjusted Rand index")
+```
+
+Inspecting the box plot points to the 2, 3, 4 and 5 segment solutions as being quite stable. Despite low number of segments not lacking interesting insights considering the same directional feature PCA plot (Fig 3.1.2) and the elbow method from the scree plot (Fig 3.1.3) the 3-segment solution still marks to be the best solution – the solution with the most mark segments with a high degree of replication. This is further backed by a noticeable drop in replicability in the 4-segment solution.
+
+```{r}
+histogram(EV.km28[["3"]], data = data2, xlim = 0:1)
+```
+
+None of the segments shown in the gorge plot is well separated from the other segments, and proximity to at least one other segment is present as indicated by the similarity values all being between 0 and 1.
+
+```{r}
+slsaplot(EV.km28)
+```
+
+Thick green lines indicate that many members of the segment to the left of the line move across to the segment on the right side of the line. Segment 2 in the two-segment solution (in the far left column of the plot) remains almost unchanged until the seven-segment solution, then it starts losing members. This seems in line with the global stability box plot. However keeping in mind earlier analysis, the SLSA plot in view of the earlier determination that the three-segment solution looks fine and but it seems segments 2 and 3 are nearly identical.
+
+```{r}
+EV.k3 <- EV.km28[["3"]]
+```
+
+```{r}
+EV.r3 <- slswFlexclust(data2, EV.k3)
+```
+
+```{r}
+plot(EV.r3, ylim = 0:1, xlab = "segment number", ylab = "segment stability")
+```
+
+
+
+## Profiling Segments
+
+```{r}
+EV.vclust <- hclust(dist(t(data2)))
+```
+
+```{r}
+barchart(EV.k3, shade = TRUE, which = rev(EV.vclust$order))
+```
+
+```{r}
+plot(EV.k3, project = EV.pca, data = data2, hull = FALSE, simlines = FALSE, xlab = "principal component 1", ylab = "principal component 2") 
+
+projAxes(EV.pca)
+```
+
+
+```{r}
+k3 <- clusters(EV.k3)
+mosaicplot(table(k3, data1$rating), shade = TRUE, main = "", xlab = "segment number")
+```
+
+The mosaic plot plots segment number along the x-axis, and the overall user rating their EV two-wheeler along the y-axis. The mosaic plot reveals a strong and signiﬁcant association between these two variables. Members of segment 1 (depicted in the ﬁrst column) do not highly rate their EV two-wheelers whatsoever shown by the completely empty boxes bottom left and seldom find them average (rating = 3), as indicated by the bottom left box being coloured in red. In stark contrast, members of segment 3 are signiﬁcantly more likely to rate an EV two-wheeler highly, as indicated by the dark blue box in the bottom right of the plot. At the same time, these consumers are less likely dislike or find EV bikes average, as indicated by the completely empty boxes and very small red box at the top right of the plot. Members of segment 2 appear to have the moderate feelings towards EV bikes (rating largely 3-4); their generally have an above average liking with a small likelihood to fall into extreme liking or disliking for the product.
+
+
+```{r}
+filtered_data <- read.csv('filtered_data.csv')
+```
+
+```{r}
+mosaicplot(table(k3, filtered_data$Used.it.for), shade = TRUE, main = "", xlab = "segment number", las = 2)
+```
+
+The descriptor variable (Used it for) is plotted along the y-axis. This mosaic plot offers the following additional insights about our market segments: segment 1 and segment 2 have a similar use case distribution with an emphasis on daily commute. Segment 1 has a very low likelihood to use EV bikes for everything. Segment 3 contains more individuals who use EV bikes for everything and have a higher tendency to use their EV bikes for everything rather than a specific use case.
+
+```{r}
+mosaicplot(table(k3, filtered_data$Owned.for), shade = TRUE, main = "", xlab = "segment number", las = 2)
+```
+
+In Fig 3.1.13,  the descriptor variable (Owned for) is plotted along the y-axis. Segment 2 and segment 3 have a similar distribution with regards to their length of ownership. In both these segments, users tend to have a greater likelihood to never own the vehicle. Segment 1, the haters, contains signiﬁcantly more individuals owning the product for a length greater than 1 year. (as depicted by the larger blue box for the >1 yr category).
+
+```{r}
+mosaicplot(table(k3, filtered_data$Ridden.for), shade = TRUE, main = "", xlab = "segment number", las = 2)
+```
+
+Never Owned - high for 1 & 2, low for 3
+
+Market segments are plotted along the x-axis. The descriptor variable (Ridden for) is plotted along the y-axis.
+
+```{r, eval=FALSE}
+library("partykit")
+tree <- ctree( + factor(k3 == 3) ~ rating + Used.it.for + Owned.for + Ridden.for, data = filtered_data) 
+
+plot(tree)
+```
+
